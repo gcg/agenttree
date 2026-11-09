@@ -64,6 +64,13 @@ func (m *Model) SelectedFeature() string {
 	return m.state.SelectedFeature
 }
 
+func (m *Model) SelectedPane() mux.PaneID {
+	if m.state == nil || m.state.SelectedFeature == "" {
+		return ""
+	}
+	return m.panes[m.state.SelectedFeature]
+}
+
 func (m *Model) ReconcileOnStart() error {
 	_ = m.deps.Mux.EnsureSession(m.deps.BgSession)
 
@@ -235,6 +242,11 @@ func (m *Model) handleAction(action string) {
 		m.openSettingsPopup()
 	case action == "restart":
 		m.restartActive()
+	case action == "reload":
+		if st, err := state.Load(m.deps.GitCommonDir); err == nil {
+			m.state = st
+			_ = m.ReconcileOnStart()
+		}
 	}
 }
 
