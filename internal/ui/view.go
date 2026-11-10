@@ -47,9 +47,13 @@ func (m *Model) renderSidebar() string {
 	b.WriteString("\n\n")
 
 	if len(m.state.Features) == 0 {
-		b.WriteString(dimStyle.Render("  No active features.\n  Press (c) to start."))
+		b.WriteString(dimStyle.Render("  No active features."))
 		b.WriteString("\n\n")
-		b.WriteString(dimStyle.Render("  [+ New] (c)"))
+		b.WriteString(normalItemStyle.Render("  [+ New Feature] (c)"))
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render("  [s] Prefs  [q] Quit"))
+		b.WriteString("\n\n")
+		b.WriteString(renderSwitchHelp())
 		return b.String()
 	}
 
@@ -81,8 +85,30 @@ func (m *Model) renderSidebar() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(dimStyle.Render("  [+ New] (c)  (q)uit"))
+	b.WriteString(normalItemStyle.Render("  [→ Focus Agent] (⏎)"))
+	b.WriteString("\n")
+	b.WriteString(normalItemStyle.Render("  [+ New Feature] (c)"))
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("  [g] Git    [x] Clean"))
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("  [r] Retry  [s] Prefs"))
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("  [q] Quit"))
+	b.WriteString("\n\n")
+	b.WriteString(renderSwitchHelp())
 	return b.String()
+}
+
+func renderSwitchHelp() string {
+	return dimStyle.Render(strings.Join([]string{
+		"  How to Switch:",
+		"  ⏎ / → / l  Focus agent",
+		"  Click      Any pane",
+		"  ^B ← / o   Sidebar",
+		"  j/k / 1-9  Switch feat",
+		"  Alt+1-9    Quick jump",
+		"  ^B ( / )   Prev / next",
+	}, "\n"))
 }
 
 func (m *Model) renderTabs() string {
@@ -105,7 +131,7 @@ func (m *Model) renderTabs() string {
 		}
 	}
 
-	tabs = append(tabs, dimStyle.Render(" [+] (c) "))
+	tabs = append(tabs, dimStyle.Render(" [+] (c)  (⏎:focus ^B o:bar) "))
 	return lipgloss.JoinHorizontal(lipgloss.Top, tabs...)
 }
 

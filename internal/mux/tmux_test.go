@@ -49,4 +49,17 @@ func TestShowSwapsAndSelectsSlot(t *testing.T) {
 	if len(calls) != 2 || calls[0][0] != "swap-pane" || calls[1][0] != "select-pane" {
 		t.Fatalf("unexpected tmux calls: %v", calls)
 	}
+	// After swapping %5 and %2, %5 is in the window slot, so select-pane must target %5.
+	if calls[1][2] != "%5" {
+		t.Fatalf("expected select-pane target %%5, got %v", calls[1])
+	}
+
+	// Showing %5 when it is already in the slot (%5 == %5) must only select-pane without swapping.
+	calls = nil
+	if err := m.Show("%5", "%5"); err != nil {
+		t.Fatalf("Show same pane: %v", err)
+	}
+	if len(calls) != 1 || calls[0][0] != "select-pane" || calls[0][2] != "%5" {
+		t.Fatalf("expected only select-pane -t %%5 when already in slot, got %v", calls)
+	}
 }
