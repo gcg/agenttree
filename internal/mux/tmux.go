@@ -97,11 +97,15 @@ func parsePanes(out string, dest map[string]PaneID) {
 }
 
 func (m *TmuxMux) Show(feature PaneID, slot PaneID) error {
-	if _, err := m.Run("swap-pane", "-d", "-s", string(feature), "-t", string(slot)); err != nil {
-		return fmt.Errorf("tmux swap-pane: %w", err)
+	if feature != "" && slot != "" && feature != slot {
+		if _, err := m.Run("swap-pane", "-d", "-s", string(feature), "-t", string(slot)); err != nil {
+			return fmt.Errorf("tmux swap-pane: %w", err)
+		}
 	}
-	if _, err := m.Run("select-pane", "-t", string(slot)); err != nil {
-		return fmt.Errorf("tmux select-pane: %w", err)
+	if feature != "" {
+		if _, err := m.Run("select-pane", "-t", string(feature)); err != nil {
+			return fmt.Errorf("tmux select-pane: %w", err)
+		}
 	}
 	return nil
 }
@@ -142,7 +146,12 @@ func (m *TmuxMux) Respawn(p PaneID, cmd string) error {
 }
 
 func (m *TmuxMux) Kill(p PaneID) error {
-	_, err := m.Run("kill-pane", "-t", string(p))
+	phOut, err := m.Run("display-message", "-p", "-t", string(p), "#{@agenttree_placeholder}")
+	ph := strings.TrimSpace(phOut)
+	if err == nil && ph != "" && ph != string(p) {
+		_, _ = m.Run("swap-pane", "-d", "-s", ph, "-t", string(p))
+	}
+	_, err = m.Run("kill-pane", "-t", string(p))
 	return err
 }
 
@@ -163,7 +172,7 @@ func (m *TmuxMux) BindKey(table, key, cmdStr string) (bool, error) {
 		return true, nil
 	}
 
-	_, err := m.Run("bind-key", "-T", table, key, "run-shell", cmdStr)
+	_, err := m.Run("bind-key", "-T", table, key, "run-shell", "-b", cmdStr)
 	return false, err
 }
 
@@ -186,6 +195,7 @@ func (m *TmuxMux) SetupWindowSlot(layout string, size int, placeholderCmd, sockP
 	windowID := strings.TrimSpace(winOut)
 
 	_, _ = m.Run("set-option", "-w", "-t", windowID, "@agenttree_ctl", sockPath)
+	_, _ = m.Run("set-option", "-w", "-t", windowID, "mouse", "on")
 
 	var splitArgs []string
 	if layout == "tabs" {
@@ -204,6 +214,7 @@ func (m *TmuxMux) SetupWindowSlot(layout string, size int, placeholderCmd, sockP
 		return "", "", "", fmt.Errorf("split agent slot: %w", err)
 	}
 	slotPane := PaneID(strings.TrimSpace(slotOut))
+	_, _ = m.Run("set-option", "-w", "-t", windowID, "@agenttree_placeholder", string(slotPane))
 
 	// Adjust sidebar width or tab height
 	if layout == "tabs" {
@@ -223,7 +234,7 @@ func (m *TmuxMux) SetupWindowSlot(layout string, size int, placeholderCmd, sockP
 }
 
 func (m *TmuxMux) CleanupWindow(slotPane, activeFeaturePane PaneID, bgSession, windowID string) error {
-	if activeFeaturePane != "" && slotPane != "" {
+	if activeFeaturePane != "" && slotPane != "" && activeFeaturePane != slotPane {
 		_, _ = m.Run("swap-pane", "-d", "-s", string(activeFeaturePane), "-t", string(slotPane))
 	}
 	if slotPane != "" {
@@ -231,6 +242,7 @@ func (m *TmuxMux) CleanupWindow(slotPane, activeFeaturePane PaneID, bgSession, w
 	}
 	if windowID != "" {
 		_, _ = m.Run("set-option", "-w", "-u", "-t", windowID, "@agenttree_ctl")
+		_, _ = m.Run("set-option", "-w", "-u", "-t", windowID, "@agenttree_placeholder")
 	}
 
 	// Check if any other windows in the server are tagged with @agenttree_ctl
@@ -249,6 +261,7 @@ func (m *TmuxMux) CleanupWindow(slotPane, activeFeaturePane PaneID, bgSession, w
 			_ = m.UnbindKey("prefix", key)
 		}
 		for i := 1; i <= 9; i++ {
+			_ = m.UnbindKey("prefix", strconv.Itoa(i))
 			_ = m.UnbindKey("root", fmt.Sprintf("M-%d", i))
 		}
 	}

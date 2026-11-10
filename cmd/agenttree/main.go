@@ -134,7 +134,11 @@ func runRoot() {
 		_, _ = tmuxMux.BindKey("prefix", b.k, fmt.Sprintf("%s ctl %s --window #{window_id}", binPath, b.a))
 	}
 	for i := 1; i <= 9; i++ {
-		_, _ = tmuxMux.BindKey("prefix", strconv.Itoa(i), fmt.Sprintf("%s ctl jump:%d --window #{window_id}", binPath, i))
+		jumpCmd := fmt.Sprintf("%s ctl jump:%d --window #{window_id}", binPath, i)
+		_, _ = tmuxMux.BindKey("prefix", strconv.Itoa(i), jumpCmd)
+		if cfg.Keys.AltJump {
+			_, _ = tmuxMux.BindKey("root", fmt.Sprintf("M-%d", i), jumpCmd)
+		}
 	}
 
 	bgSession := mux.BackgroundSessionName(repoRoot)
@@ -152,7 +156,7 @@ func runRoot() {
 	}()
 
 	_, _ = p.Run()
-	_ = tmuxMux.CleanupWindow(slotPane, m.SelectedPane(), bgSession, windowID)
+	_ = tmuxMux.CleanupWindow(slotPane, m.CurrentSlot(), bgSession, windowID)
 }
 
 func runCtl(args []string) {
@@ -267,7 +271,19 @@ func runCleanup(args []string) {
 }
 
 func runPlaceholder() {
-	fmt.Println("\n  Press prefix + C (or 'c') to start a feature")
+	fmt.Print(`
+  agenttree — Parallel Coding Agents
+
+  Getting Started:
+    • Press 'c' (or click [+ New Feature]) in the sidebar to start a feature
+    • Or press prefix + C from anywhere in this window
+
+  Switching Panes & Features:
+    • Mouse:       Click any pane or feature in the sidebar
+    • Focus agent: Press Enter, →, l, or Tab in the sidebar
+    • Focus list:  Press prefix + ← (or prefix + o), or click the sidebar
+    • Switch:      j/k (↑/↓), 1-9, Alt+1-9, or prefix + ( / )
+`)
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh
